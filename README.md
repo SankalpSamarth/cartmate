@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CartMate 🛒
+> Split quick-commerce orders with your hostelmates. Save on delivery fees.
 
-## Getting Started
+A mobile-first, real-time web app where students post Blinkit/Swiggy Instamart orders, others request to join, and you approve before sharing your WhatsApp — so your number never gets exposed to a crowd.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Deploy to Vercel (5 minutes)
+
+### Step 1 — Create your Upstash Redis database
+1. Go to [console.upstash.com](https://console.upstash.com) and sign up (free)
+2. Click **Create Database** → give it any name → select the region closest to your users (e.g. **Mumbai** for India)
+3. Once created, go to the **REST API** tab and copy:
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+
+### Step 2 — Deploy to Vercel
+1. Push this repo to GitHub
+2. Go to [vercel.com](https://vercel.com) → **Add New Project** → import your repo
+3. In **Environment Variables**, add:
+   ```
+   UPSTASH_REDIS_REST_URL = <paste from Upstash>
+   UPSTASH_REDIS_REST_TOKEN = <paste from Upstash>
+   ```
+4. Click **Deploy** — done!
+
+---
+
+## Customize for your campus
+
+Edit [`lib/constants.ts`](./lib/constants.ts):
+
+```ts
+export const HOSTELS = [
+  "HB4 - C Wing",
+  "HB4 - D Wing",
+  // Add your actual hostel/building names here
+];
+
+export const PLATFORMS = [
+  "Blinkit",
+  "Swiggy Instamart",
+] as const;
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local Development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+The app runs fully in-memory without Upstash configured. For production-like local testing, copy `.env.local.example` to `.env.local` and fill in your Upstash credentials.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## How it works
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. **Post** — You're about to order. Post it publicly (platform, hostel, what you need, WhatsApp number, expiry timer).
+2. **Request** — Someone sees your post and clicks "I want in". They describe what they'd order.
+3. **Approve** — You see requests in-app and pick who joins. No WhatsApp flood.
+4. **Connect** — Only the approved person sees the "Join on WhatsApp" button. Your number stays private until you choose.
+5. **Auto-expire** — Posts vanish after 10–20 minutes automatically.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Tech Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **Next.js 16** (App Router, server components)
+- **Upstash Redis** (serverless key-value store with auto-TTL)
+- **Vanilla CSS** (no Tailwind utility classes in markup)
+- **BroadcastChannel + 3s polling** (real-time sync across tabs and incognito windows)
+- **localStorage** (device identity — no login required)
