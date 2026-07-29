@@ -12,6 +12,11 @@ export function getRedis(): Redis | null {
     return null; // falls back to in-memory mock
   }
 
-  _redis = new Redis({ url, token });
+  _redis = new Redis({ 
+    url, 
+    token,
+    // Disable Next.js aggressive fetch caching for Upstash API calls
+    fetch: (input, init) => fetch(input, { ...init, cache: "no-store" })
+  });
   return _redis;
 }
