@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+
 import { getRedis } from "@/lib/redis";
 
 const STATS_KEY = "cartmate:stats:orders"; // sorted set: score = created timestamp ms

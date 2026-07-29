@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+
 import { getRedis } from "@/lib/redis";
 import type { JoinRequest } from "@/lib/types";
 
@@ -20,7 +23,9 @@ export async function GET(req: Request) {
     const pipeline = redis.pipeline();
     for (const id of ids) pipeline.get(REQUEST_KEY(id as string));
     const results = await pipeline.exec();
-    const requests = (results as (JoinRequest | null)[]).filter(Boolean).map((r) => r as JoinRequest);
+    const requests = results
+      .filter(Boolean)
+      .map((r) => (typeof r === "string" ? JSON.parse(r) : r) as JoinRequest);
     return NextResponse.json(requests);
   }
 

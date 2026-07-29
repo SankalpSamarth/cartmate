@@ -1,4 +1,7 @@
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
+
 import { getRedis } from "@/lib/redis";
 import type { Order } from "@/lib/types";
 
