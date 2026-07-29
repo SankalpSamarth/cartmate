@@ -12,18 +12,21 @@ const ORDER_KEY = (id: string) => `cartmate:order:${id}`;
 const STATS_KEY = "cartmate:stats:orders"; // sorted set: score = created ms
 
 async function redisGetActiveOrders(redis: NonNullable<ReturnType<typeof getRedis>>): Promise<Order[]> {
-  const now = Date.now();
-  // Remove expired first
-  await redis.zremrangebyscore(ORDERS_KEY, "-inf", now);
-  // Get IDs of still-active orders (expiry > now)
-  const ids = await redis.zrange(ORDERS_KEY, now, "+inf", { byScore: true });
+  // Get ALL member IDs from sorted set (rank-based, no byScore — most reliable)
+  const ids = await redis.zrange(ORDERS_KEY, 0, -1);
   if (!ids.length) return [];
+
   const pipeline = redis.pipeline();
   for (const id of ids) pipeline.get(ORDER_KEY(id as string));
   const results = await pipeline.exec();
-  return (results as (Order | null)[])
+
+  const now = Date.now();
+  return (results as (Order | string | null)[])
     .filter(Boolean)
-    .map((r) => r as Order)
+    // @upstash/redis may return raw JSON string or parsed object depending on context
+    .map((r) => (typeof r === "string" ? JSON.parse(r) : r) as Order)
+    // Filter expired orders in JS — individual keys also expire via Redis TTL
+    .filter((o) => new Date(o.expires_at).getTime() > now)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
