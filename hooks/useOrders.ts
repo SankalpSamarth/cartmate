@@ -19,7 +19,9 @@ export function useOrders() {
 
   const loadOrders = useCallback(async () => {
     const data = await fetchActiveOrders();
-    setOrders(data);
+    if (data) {
+      setOrders(data);
+    }
     setLoading(false);
   }, []);
 

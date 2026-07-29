@@ -14,15 +14,21 @@ const BC_CHANNEL = "cartmate-requests";
 export function useIncomingRequests(orderId: string | null) {
   const [requests, setRequests] = useState<JoinRequest[]>([]);
 
+  const loadRequests = useCallback(async () => {
+    if (!orderId) return;
+    const data = await fetchRequestsForOrder(orderId);
+    if (data) {
+      setRequests(data);
+    }
+  }, [orderId]);
+
   useEffect(() => {
     if (!orderId) { setRequests([]); return; }
 
+    const poll = () => loadRequests();
+
     // ── Demo mode: BroadcastChannel + Polling ─────────────
     let pollingId: ReturnType<typeof setInterval>;
-
-    const poll = () => {
-      fetchRequestsForOrder(orderId).then(setRequests);
-    };
 
     if (typeof BroadcastChannel !== "undefined") {
       const bc = new BroadcastChannel(BC_CHANNEL);
@@ -51,7 +57,7 @@ export function useIncomingRequests(orderId: string | null) {
       pollingId = setInterval(poll, POLLING_INTERVAL_MS);
       return () => clearInterval(pollingId);
     }
-  }, [orderId]);
+  }, [orderId, loadRequests]);
 
   /** Approve a join request — updates Supabase and broadcasts to requester's tab. */
   const approve = useCallback(async (request: JoinRequest) => {

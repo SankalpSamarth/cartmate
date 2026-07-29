@@ -9,14 +9,14 @@ import type { Order, JoinRequest } from "./types";
 
 // ─── Orders ───────────────────────────────────────────────────
 
-export async function fetchActiveOrders(): Promise<Order[]> {
+export async function fetchActiveOrders(): Promise<Order[] | null> {
   try {
     const res = await fetch("/api/orders", { cache: "no-store" });
     if (!res.ok) throw new Error(await res.text());
     return await res.json();
   } catch (err) {
-    console.error("[CartMate] fetchActiveOrders:", err);
-    return [];
+    console.error("[CartMate] fetchActiveOrders failed:", err);
+    return null; // Return null on error so we don't wipe the UI
   }
 }
 
@@ -74,7 +74,7 @@ export async function createJoinRequest(
   }
 }
 
-export async function fetchRequestsForOrder(orderId: string): Promise<JoinRequest[]> {
+export async function fetchRequestsForOrder(orderId: string): Promise<JoinRequest[] | null> {
   try {
     const res = await fetch(`/api/requests?orderId=${encodeURIComponent(orderId)}`, {
       cache: "no-store",
@@ -82,8 +82,8 @@ export async function fetchRequestsForOrder(orderId: string): Promise<JoinReques
     if (!res.ok) throw new Error(await res.text());
     return await res.json();
   } catch (err) {
-    console.error("[CartMate] fetchRequestsForOrder:", err);
-    return [];
+    console.error("[CartMate] fetchRequestsForOrder failed:", err);
+    return null;
   }
 }
 
