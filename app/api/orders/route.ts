@@ -65,7 +65,7 @@ export async function GET() {
       return NextResponse.json(orders);
     } catch (err) {
       console.error("[CartMate] Redis GET /api/orders failed:", err);
-      return NextResponse.json({ error: "Database error" }, { status: 500 });
+      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
     }
   }
   // In-memory fallback
@@ -108,7 +108,7 @@ export async function POST(req: Request) {
       return NextResponse.json(order);
     } catch (err) {
       console.error("[CartMate] Redis POST /api/orders failed:", err);
-      return NextResponse.json({ error: "Database error" }, { status: 500 });
+      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
     }
   } else {
     (globalAny._mockOrders as Order[]).unshift(order);
@@ -134,7 +134,7 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: true });
     } catch (err) {
       console.error("[CartMate] Redis DELETE /api/orders failed:", err);
-      return NextResponse.json({ error: "Database error" }, { status: 500 });
+      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
     }
   }
 
