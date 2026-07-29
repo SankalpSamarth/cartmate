@@ -52,8 +52,13 @@ async function redisDeleteOrder(redis: NonNullable<ReturnType<typeof getRedis>>,
 export async function GET() {
   const redis = getRedis();
   if (redis) {
-    const orders = await redisGetActiveOrders(redis);
-    return NextResponse.json(orders);
+    try {
+      const orders = await redisGetActiveOrders(redis);
+      return NextResponse.json(orders);
+    } catch (err) {
+      console.error("[CartMate] Redis GET /api/orders failed:", err);
+      // fall through to in-memory
+    }
   }
   // In-memory fallback
   const active = (globalAny._mockOrders as Order[])
@@ -84,13 +89,18 @@ export async function POST(req: Request) {
 
   const redis = getRedis();
   if (redis) {
-    // Rate limit: one active post per device
-    const existing = await redisGetActiveOrders(redis);
-    const alreadyPosted = existing.find((o) => o.device_id === data.device_id);
-    if (alreadyPosted) {
-      return NextResponse.json({ error: "You already have an active post" }, { status: 429 });
+    try {
+      // Rate limit: one active post per device
+      const existing = await redisGetActiveOrders(redis);
+      const alreadyPosted = existing.find((o) => o.device_id === data.device_id);
+      if (alreadyPosted) {
+        return NextResponse.json({ error: "You already have an active post" }, { status: 429 });
+      }
+      await redisCreateOrder(redis, order);
+    } catch (err) {
+      console.error("[CartMate] Redis POST /api/orders failed:", err);
+      (globalAny._mockOrders as Order[]).unshift(order);
     }
-    await redisCreateOrder(redis, order);
   } else {
     (globalAny._mockOrders as Order[]).unshift(order);
   }
