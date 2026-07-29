@@ -14,9 +14,7 @@ export function getRedis(): Redis | null {
 
   _redis = new Redis({ 
     url, 
-    token,
-    // Disable Next.js aggressive fetch caching for Upstash API calls
-    fetch: (input, init) => fetch(input, { ...init, cache: "no-store" })
+    token
   });
   return _redis;
 }

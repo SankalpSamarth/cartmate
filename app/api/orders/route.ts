@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+
 
 import { getRedis } from "@/lib/redis";
 import type { Order } from "@/lib/types";
