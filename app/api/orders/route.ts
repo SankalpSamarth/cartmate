@@ -63,7 +63,7 @@ export async function GET() {
       return NextResponse.json(orders);
     } catch (err) {
       console.error("[CartMate] Redis GET /api/orders failed:", err);
-      // fall through to in-memory
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
     }
   }
   // In-memory fallback
@@ -103,9 +103,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "You already have an active post" }, { status: 429 });
       }
       await redisCreateOrder(redis, order);
+      return NextResponse.json(order);
     } catch (err) {
       console.error("[CartMate] Redis POST /api/orders failed:", err);
-      (globalAny._mockOrders as Order[]).unshift(order);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
     }
   } else {
     (globalAny._mockOrders as Order[]).unshift(order);
@@ -125,9 +126,14 @@ export async function DELETE(req: Request) {
 
   const redis = getRedis();
   if (redis) {
-    const ok = await redisDeleteOrder(redis, id, deviceId);
-    if (!ok) return NextResponse.json({ error: "Not found or not your post" }, { status: 404 });
-    return NextResponse.json({ success: true });
+    try {
+      const ok = await redisDeleteOrder(redis, id, deviceId);
+      if (!ok) return NextResponse.json({ error: "Not found or not your post" }, { status: 404 });
+      return NextResponse.json({ success: true });
+    } catch (err) {
+      console.error("[CartMate] Redis DELETE /api/orders failed:", err);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
+    }
   }
 
   // In-memory fallback

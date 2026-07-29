@@ -18,15 +18,20 @@ export async function GET(req: Request) {
 
   const redis = getRedis();
   if (redis) {
-    const ids = await redis.lrange(ORDER_REQUESTS_KEY(orderId), 0, -1);
-    if (!ids.length) return NextResponse.json([]);
-    const pipeline = redis.pipeline();
-    for (const id of ids) pipeline.get(REQUEST_KEY(id as string));
-    const results = await pipeline.exec();
-    const requests = results
-      .filter(Boolean)
-      .map((r) => (typeof r === "string" ? JSON.parse(r) : r) as JoinRequest);
-    return NextResponse.json(requests);
+    try {
+      const ids = await redis.lrange(ORDER_REQUESTS_KEY(orderId), 0, -1);
+      if (!ids.length) return NextResponse.json([]);
+      const pipeline = redis.pipeline();
+      for (const id of ids) pipeline.get(REQUEST_KEY(id as string));
+      const results = await pipeline.exec();
+      const requests = results
+        .filter(Boolean)
+        .map((r) => (typeof r === "string" ? JSON.parse(r) : r) as JoinRequest);
+      return NextResponse.json(requests);
+    } catch (err) {
+      console.error("[CartMate] Redis GET /api/requests failed:", err);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
+    }
   }
 
   // In-memory fallback
@@ -50,17 +55,22 @@ export async function POST(req: Request) {
 
   // Prevent duplicate requests from same device for same order
   if (redis) {
-    const existing = await (async () => {
-      const ids = await redis.lrange(ORDER_REQUESTS_KEY(data.order_id), 0, -1);
-      if (!ids.length) return [];
-      const pipeline = redis.pipeline();
-      for (const id of ids) pipeline.get(REQUEST_KEY(id as string));
-      const results = await pipeline.exec();
-      return (results as (JoinRequest | null)[]).filter(Boolean) as JoinRequest[];
-    })();
-    const duplicate = existing.find((r) => r.requester_device_id === data.requester_device_id);
-    if (duplicate) {
-      return NextResponse.json({ error: "You already sent a request for this order" }, { status: 409 });
+    try {
+      const existing = await (async () => {
+        const ids = await redis.lrange(ORDER_REQUESTS_KEY(data.order_id), 0, -1);
+        if (!ids.length) return [];
+        const pipeline = redis.pipeline();
+        for (const id of ids) pipeline.get(REQUEST_KEY(id as string));
+        const results = await pipeline.exec();
+        return (results as (JoinRequest | null)[]).filter(Boolean) as JoinRequest[];
+      })();
+      const duplicate = existing.find((r) => r.requester_device_id === data.requester_device_id);
+      if (duplicate) {
+        return NextResponse.json({ error: "You already sent a request for this order" }, { status: 409 });
+      }
+    } catch (err) {
+      console.error("[CartMate] Redis POST /api/requests check failed:", err);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
     }
   }
 
@@ -72,10 +82,16 @@ export async function POST(req: Request) {
   };
 
   if (redis) {
-    // Store request, expire after 24h (orders max 20 min, this is generous)
-    await redis.set(REQUEST_KEY(newRequest.id), JSON.stringify(newRequest), { ex: 60 * 60 * 24 });
-    await redis.lpush(ORDER_REQUESTS_KEY(data.order_id), newRequest.id);
-    await redis.expire(ORDER_REQUESTS_KEY(data.order_id), 60 * 60 * 24);
+    try {
+      // Store request, expire after 24h (orders max 20 min, this is generous)
+      await redis.set(REQUEST_KEY(newRequest.id), JSON.stringify(newRequest), { ex: 60 * 60 * 24 });
+      await redis.lpush(ORDER_REQUESTS_KEY(data.order_id), newRequest.id);
+      await redis.expire(ORDER_REQUESTS_KEY(data.order_id), 60 * 60 * 24);
+      return NextResponse.json(newRequest);
+    } catch (err) {
+      console.error("[CartMate] Redis POST /api/requests store failed:", err);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
+    }
   } else {
     (globalAny._mockRequests as JoinRequest[]).push(newRequest);
   }
@@ -90,12 +106,17 @@ export async function PATCH(req: Request) {
 
   const redis = getRedis();
   if (redis) {
-    const raw = await redis.get<string>(REQUEST_KEY(id));
-    if (!raw) return NextResponse.json({ error: "Request not found" }, { status: 404 });
-    const existing: JoinRequest = typeof raw === "string" ? JSON.parse(raw) : raw;
-    const updated = { ...existing, status: "approved" as const };
-    await redis.set(REQUEST_KEY(id), JSON.stringify(updated), { ex: 60 * 60 * 24 });
-    return NextResponse.json(updated);
+    try {
+      const raw = await redis.get<string>(REQUEST_KEY(id));
+      if (!raw) return NextResponse.json({ error: "Request not found" }, { status: 404 });
+      const existing: JoinRequest = typeof raw === "string" ? JSON.parse(raw) : raw;
+      const updated = { ...existing, status: "approved" as const };
+      await redis.set(REQUEST_KEY(id), JSON.stringify(updated), { ex: 60 * 60 * 24 });
+      return NextResponse.json(updated);
+    } catch (err) {
+      console.error("[CartMate] Redis PATCH /api/requests failed:", err);
+      return NextResponse.json({ error: "Database error" }, { status: 500 });
+    }
   }
 
   // In-memory fallback
