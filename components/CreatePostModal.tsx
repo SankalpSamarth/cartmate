@@ -13,6 +13,7 @@ interface CreatePostModalProps {
 }
 
 const INITIAL_STATE = {
+  poster_name: "",
   platform: "" as string,
   hostel: "" as string,
   floor: "",
@@ -28,10 +29,21 @@ export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalP
   const [submitting, setSubmitting] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  // Reset form when opened
+  // Reset/hydrate form when opened
   useEffect(() => {
     if (isOpen) {
-      setForm(INITIAL_STATE);
+      try {
+        const cached = JSON.parse(localStorage.getItem("cartmate_poster_details") || "{}");
+        setForm({
+          ...INITIAL_STATE,
+          poster_name: cached.poster_name || "",
+          hostel: cached.hostel || "",
+          floor: cached.floor || "",
+          whatsapp: cached.whatsapp || "",
+        });
+      } catch {
+        setForm(INITIAL_STATE);
+      }
       setErrors({});
     }
   }, [isOpen]);
@@ -52,8 +64,10 @@ export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalP
 
   const validate = () => {
     const e: Record<string, string> = {};
+    if (!form.poster_name.trim()) e.poster_name = "Enter your name";
     if (!form.platform) e.platform = "Pick a platform";
     if (!form.hostel) e.hostel = "Pick your hostel";
+    if (!form.floor.trim()) e.floor = "Enter your floor / room";
     if (!form.note.trim()) e.note = "Add a short note";
     if (form.note.length > 150) e.note = "Keep it under 150 characters";
     if (!/^\d{10}$/.test(form.whatsapp)) e.whatsapp = "Enter a valid 10-digit number";
@@ -70,9 +84,10 @@ export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalP
     const now = new Date().toISOString();
 
     const payload = {
+      poster_name: form.poster_name.trim(),
       platform: form.platform,
       hostel: form.hostel,
-      floor: form.floor.trim() || null,
+      floor: form.floor.trim(),
       note: form.note.trim(),
       whatsapp_number: form.whatsapp.trim(),
       device_id: deviceId,
@@ -93,6 +108,14 @@ export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalP
     }
 
     setSubmitting(false);
+
+    // Save details for next time
+    localStorage.setItem("cartmate_poster_details", JSON.stringify({
+      poster_name: form.poster_name.trim(),
+      hostel: form.hostel,
+      floor: form.floor.trim(),
+      whatsapp: form.whatsapp.trim(),
+    }));
 
     const stored: StoredPost = {
       id: order.id,
@@ -126,6 +149,20 @@ export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalP
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
+          </div>
+
+          {/* Name */}
+          <div className="form-group">
+            <label className="form-label">Your Name</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="e.g. Rahul"
+              value={form.poster_name}
+              onChange={(e) => setForm((f) => ({ ...f, poster_name: e.target.value }))}
+              maxLength={30}
+            />
+            {errors.poster_name && <span className="form-error">{errors.poster_name}</span>}
           </div>
 
           {/* Platform */}
@@ -173,19 +210,18 @@ export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalP
             {errors.hostel && <span className="form-error">{errors.hostel}</span>}
           </div>
 
-          {/* Floor */}
+          {/* Floor & Room */}
           <div className="form-group">
-            <label className="form-label">
-              Floor <span className="form-label__optional">(optional)</span>
-            </label>
+            <label className="form-label">Floor & Room No</label>
             <input
               type="text"
               className="form-input"
-              placeholder="e.g. 3rd, Ground, Terrace"
+              placeholder="e.g. 3rd Floor, Room 312"
               value={form.floor}
               onChange={(e) => setForm((f) => ({ ...f, floor: e.target.value }))}
-              maxLength={20}
+              maxLength={30}
             />
+            {errors.floor && <span className="form-error">{errors.floor}</span>}
           </div>
 
           {/* Note */}

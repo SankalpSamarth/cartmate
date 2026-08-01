@@ -31,5 +31,5 @@ export const PLATFORM_COLORS: Record<Platform, { bg: string; text: string; borde
 export const DURATIONS = [10, 15, 20] as const;
 export type Duration = (typeof DURATIONS)[number];
 
-export const WHATSAPP_MESSAGE_TEMPLATE = (platform: string, hostel: string) =>
-  `Hey! Saw your CartMate post — ordering from ${platform} at ${hostel}. Can I join in with something?`;
+export const WHATSAPP_MESSAGE_TEMPLATE = (platform: string, hostel: string, posterName: string) =>
+  `Hey ${posterName}! Saw your CartMate post — ordering from ${platform} at ${hostel}. Can I join in with something?`;

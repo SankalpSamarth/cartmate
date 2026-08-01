@@ -41,7 +41,7 @@ export function OrderCard({ order, requestStatus, onDelete, onRequestJoin, onWit
     PLATFORM_COLORS[order.platform as keyof typeof PLATFORM_COLORS] ??
     PLATFORM_COLORS[Object.keys(PLATFORM_COLORS)[0] as keyof typeof PLATFORM_COLORS];
 
-  const waMessage = encodeURIComponent(WHATSAPP_MESSAGE_TEMPLATE(order.platform, order.hostel));
+  const waMessage = encodeURIComponent(WHATSAPP_MESSAGE_TEMPLATE(order.platform, order.hostel, order.poster_name));
   const waUrl = `https://wa.me/${order.whatsapp_number}?text=${waMessage}`;
 
   const handleDelete = useCallback(async () => {
@@ -81,7 +81,9 @@ export function OrderCard({ order, requestStatus, onDelete, onRequestJoin, onWit
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
           <polyline points="9 22 9 12 15 12 15 22" />
         </svg>
-        {order.hostel}{order.floor ? ` · Floor ${order.floor}` : ""}
+        <span className="order-card__poster-name">{order.poster_name}</span>
+        <span className="order-card__spots-dot">·</span>
+        {order.hostel} · {order.floor}
         <span className="order-card__spots-dot">·</span>
         <span className="order-card__spots">{spotsLabel}</span>
         <span className="order-card__time">{timeSince}</span>

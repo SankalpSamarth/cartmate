@@ -1040,3 +1040,7 @@ body {
   color: var(--border-strong);
   font-size: 11px;
 }
+.order-card__poster-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}

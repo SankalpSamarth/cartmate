@@ -1,8 +1,9 @@
 export interface Order {
   id: string;
+  poster_name: string;
   platform: string;
   hostel: string;
-  floor: string | null;
+  floor: string;
   note: string;
   whatsapp_number: string;
   device_id: string;

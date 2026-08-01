@@ -79,7 +79,7 @@ export async function POST(req: Request) {
   const data = await req.json();
 
   // Server-side validation
-  if (!data.platform || !data.hostel || !data.note || !data.whatsapp_number || !data.expires_at || !data.device_id) {
+  if (!data.poster_name || !data.platform || !data.hostel || !data.floor || !data.note || !data.whatsapp_number || !data.expires_at || !data.device_id) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
   if (data.note.length > 150) {
