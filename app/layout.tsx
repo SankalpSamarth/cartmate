@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,7 +7,6 @@ export const metadata: Metadata = {
   description:
     "Find hostelmates ordering from Blinkit or Swiggy Instamart right now. Join their cart to split delivery fees and skip minimums.",
   keywords: ["quick-commerce", "hostel", "blinkit", "instamart", "campus delivery", "split order"],
-  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -17,10 +17,6 @@ export const metadata: Metadata = {
     description: "See who's ordering on campus right now. Join their cart instantly.",
     type: "website",
   },
-  icons: {
-    icon: "/icon-192.png",
-    apple: "/icon-192.png",
-  },
 };
 
 export const viewport: Viewport = {
@@ -28,7 +24,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#4338ca",
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({
@@ -40,6 +36,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="app-shell">{children}</div>
+        <Analytics />
       </body>
     </html>
   );
