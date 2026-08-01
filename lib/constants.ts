@@ -6,8 +6,8 @@
 export const HOSTELS = [
   "HB4 C-WING (Boys)",
   "HB4 D-WING (Boys)",
-  "HB4 C-WING (Girls)",
-  "HB4 D-WING (Girls)",
+  "HB4 A-WING (Girls)",
+  "HB4 B-WING (Girls)",
 ];
 
 export const PLATFORMS = [
