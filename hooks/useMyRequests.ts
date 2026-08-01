@@ -34,6 +34,7 @@ export function useMyRequests() {
     // Polling — check if pending requests have been approved or declined
     const pollPending = async () => {
       const currentStored = getAllRequests();
+      if (document.visibilityState !== "visible") return;
       for (const [orderId, req] of Object.entries(currentStored)) {
         if (req.status !== "pending") continue;
         try {
@@ -53,7 +54,7 @@ export function useMyRequests() {
         } catch {}
       }
     };
-    const pollingId = setInterval(pollPending, 3000);
+    const pollingId = setInterval(pollPending, 15_000);
 
     // Listen for approval notifications from the poster's tab
     if (typeof BroadcastChannel !== "undefined") {

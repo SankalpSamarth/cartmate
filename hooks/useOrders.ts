@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { fetchActiveOrders } from "@/lib/api";
 import type { Order } from "@/lib/types";
 
-const POLLING_INTERVAL_MS = 3_000;
+const POLLING_INTERVAL_MS = 15_000;
 const BC_CHANNEL = "cartmate-orders";
 
 type BCMessage =
@@ -46,7 +46,12 @@ export function useOrders() {
     }
 
     // Polling — bridges cross-window (incognito / other devices) sync
-    pollingRef.current = setInterval(loadOrders, POLLING_INTERVAL_MS);
+    pollingRef.current = setInterval(() => {
+      // Don't waste API calls if the user isn't even looking at the tab
+      if (document.visibilityState === "visible") {
+        loadOrders();
+      }
+    }, POLLING_INTERVAL_MS);
 
     return () => {
       bcRef.current?.close();
