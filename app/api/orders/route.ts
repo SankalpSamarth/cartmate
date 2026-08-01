@@ -88,9 +88,11 @@ export async function POST(req: Request) {
   if (!/^\d{10}$/.test(data.whatsapp_number)) {
     return NextResponse.json({ error: "Invalid WhatsApp number" }, { status: 400 });
   }
+  const maxSpots = data.max_spots === 2 ? 2 : 1; // default 1, allow 2
 
   const order: Order = {
     ...data,
+    max_spots: maxSpots,
     id: crypto.randomUUID(),
     created_at: new Date().toISOString(),
   };

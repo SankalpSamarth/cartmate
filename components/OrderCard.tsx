@@ -6,11 +6,14 @@ import { PLATFORM_COLORS } from "@/lib/constants";
 import { getDeviceId } from "@/lib/device";
 import { WHATSAPP_MESSAGE_TEMPLATE } from "@/lib/constants";
 
+type RequestStatus = "none" | "pending" | "approved" | "declined" | "withdrawn";
+
 interface OrderCardProps {
   order: Order;
-  requestStatus: "none" | "pending" | "approved";
+  requestStatus: RequestStatus;
   onDelete: (id: string) => void;
   onRequestJoin: (order: Order) => void;
+  onWithdraw: (orderId: string) => void;
 }
 
 function formatCountdown(expiresAt: string): { label: string; state: "normal" | "amber" | "urgent" } {
@@ -25,7 +28,7 @@ function formatCountdown(expiresAt: string): { label: string; state: "normal" | 
   return { label, state: "normal" };
 }
 
-export function OrderCard({ order, requestStatus, onDelete, onRequestJoin }: OrderCardProps) {
+export function OrderCard({ order, requestStatus, onDelete, onRequestJoin, onWithdraw }: OrderCardProps) {
   const [countdown, setCountdown] = useState(() => formatCountdown(order.expires_at));
   const [isOwn] = useState(() => getDeviceId() === order.device_id);
 
@@ -55,8 +58,10 @@ export function OrderCard({ order, requestStatus, onDelete, onRequestJoin }: Ord
     return `${mins} mins ago`;
   })();
 
+  const spotsLabel = order.max_spots === 2 ? "2 spots" : "1 spot";
+
   return (
-    <div className={`order-card ${isOwn ? "order-card--own" : ""}`}>
+    <div className={`order-card ${isOwn ? "order-card--own" : ""} ${requestStatus === "declined" ? "order-card--declined" : ""}`}>
       {/* Header */}
       <div className="order-card__header">
         <span
@@ -70,13 +75,15 @@ export function OrderCard({ order, requestStatus, onDelete, onRequestJoin }: Ord
         </span>
       </div>
 
-      {/* Location */}
+      {/* Location + spots */}
       <div className="order-card__location">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
           <polyline points="9 22 9 12 15 12 15 22" />
         </svg>
         {order.hostel}{order.floor ? ` · Floor ${order.floor}` : ""}
+        <span className="order-card__spots-dot">·</span>
+        <span className="order-card__spots">{spotsLabel}</span>
         <span className="order-card__time">{timeSince}</span>
       </div>
 
@@ -97,12 +104,21 @@ export function OrderCard({ order, requestStatus, onDelete, onRequestJoin }: Ord
             </svg>
             Join on WhatsApp
           </a>
+        ) : requestStatus === "declined" ? (
+          <div className="order-card__declined-msg">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="15" y1="9" x2="9" y2="15" />
+              <line x1="9" y1="9" x2="15" y2="15" />
+            </svg>
+            Order is full — not selected
+          </div>
         ) : requestStatus === "pending" ? (
-          <button disabled className="btn btn--pending">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <button onClick={() => onWithdraw(order.id)} className="btn btn--withdraw">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <polyline points="20 6 9 17 4 12" />
             </svg>
-            Request sent
+            Request sent · Withdraw
           </button>
         ) : (
           <button onClick={() => onRequestJoin(order)} className="btn btn--request">

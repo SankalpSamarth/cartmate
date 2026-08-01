@@ -92,11 +92,25 @@ export async function approveJoinRequest(requestId: string): Promise<boolean> {
     const res = await fetch("/api/requests", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: requestId }),
+      body: JSON.stringify({ id: requestId, action: "approve" }),
     });
     return res.ok;
   } catch (err) {
     console.error("[CartMate] approveJoinRequest:", err);
+    return false;
+  }
+}
+
+export async function withdrawJoinRequest(requestId: string): Promise<boolean> {
+  try {
+    const res = await fetch("/api/requests", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: requestId, action: "withdraw" }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error("[CartMate] withdrawJoinRequest:", err);
     return false;
   }
 }

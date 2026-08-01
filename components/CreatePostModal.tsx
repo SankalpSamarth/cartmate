@@ -19,6 +19,7 @@ const INITIAL_STATE = {
   note: "",
   whatsapp: "",
   duration: 15 as 10 | 15 | 20,
+  spots: 1 as 1 | 2,
 };
 
 export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalProps) {
@@ -76,6 +77,7 @@ export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalP
       whatsapp_number: form.whatsapp.trim(),
       device_id: deviceId,
       expires_at: expiresAt,
+      max_spots: form.spots,
     };
 
     let order = await createOrder(payload);
@@ -224,6 +226,23 @@ export function CreatePostModal({ isOpen, onClose, onCreated }: CreatePostModalP
               />
             </div>
             {errors.whatsapp && <span className="form-error">{errors.whatsapp}</span>}
+          </div>
+
+          {/* Spots */}
+          <div className="form-group">
+            <label className="form-label">How many can join?</label>
+            <div className="chip-group">
+              {([1, 2] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, spots: s }))}
+                  className={`chip ${form.spots === s ? "chip--selected chip--selected-accent" : ""}`}
+                >
+                  {s === 1 ? "1 person" : "2 people"}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Duration */}

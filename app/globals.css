@@ -956,3 +956,87 @@ body {
   border-radius: var(--radius-full);
   padding: 4px 10px;
 }
+
+/* Declined badge in requests sheet */
+.request-row__declined-badge {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-base);
+  border-radius: var(--radius-full);
+  padding: 4px 10px;
+}
+
+/* Pending badge (when spots are full) */
+.request-row__pending-badge {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+/* Declined row — muted visually */
+.request-row--declined {
+  opacity: 0.45;
+}
+
+/* Muted section label (for "Not selected") */
+.requests-section-label--muted {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Full order banner */
+.requests-full-banner {
+  background: var(--bg-surface);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.5;
+  border-left: 3px solid var(--border-strong);
+}
+
+/* Withdraw button — active but quiet */
+.btn--withdraw {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  flex: 1;
+  font-size: 13px;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.btn--withdraw:hover {
+  background: var(--red-bg);
+  color: var(--red);
+  border-color: rgba(220,38,38,0.25);
+}
+
+/* Declined card state */
+.order-card--declined {
+  opacity: 0.6;
+}
+
+/* Declined message inside card */
+.order-card__declined-msg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  flex: 1;
+}
+
+/* Spots indicator in location row */
+.order-card__spots {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.order-card__spots-dot {
+  color: var(--border-strong);
+  font-size: 11px;
+}

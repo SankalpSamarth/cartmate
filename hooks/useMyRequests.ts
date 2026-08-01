@@ -5,48 +5,52 @@ import {
   getAllRequests,
   saveMyRequest,
   markRequestApproved,
+  markRequestDeclined,
+  removeMyRequest,
   LocalRequest,
 } from "@/lib/requests";
-import { createJoinRequest } from "@/lib/api";
+import { createJoinRequest, withdrawJoinRequest } from "@/lib/api";
 import { getDeviceId } from "@/lib/device";
 import type { Order, JoinRequest } from "@/lib/types";
 
 const BC_CHANNEL = "cartmate-requests";
 
-type RequestStatus = "none" | "pending" | "approved";
+type RequestStatus = "none" | "pending" | "approved" | "declined" | "withdrawn";
 
 /** Tracks the current device's outgoing join requests. */
 export function useMyRequests() {
-  // Map of orderId → status
-  const [statusMap, setStatusMap] = useState<Record<string, RequestStatus>>({});
+  // Map of orderId → { status, requestId }
+  const [statusMap, setStatusMap] = useState<Record<string, { status: RequestStatus; requestId: string }>>({});
 
   useEffect(() => {
     // Hydrate from localStorage
     const stored = getAllRequests();
-    const initial: Record<string, RequestStatus> = {};
+    const initial: Record<string, { status: RequestStatus; requestId: string }> = {};
     for (const [orderId, req] of Object.entries(stored)) {
-      initial[orderId] = req.status;
+      initial[orderId] = { status: req.status, requestId: req.id };
     }
     setStatusMap(initial);
 
-    // Polling for demo mode (cross-window/Incognito sync)
+    // Polling — check if pending requests have been approved or declined
     const pollPending = async () => {
       const currentStored = getAllRequests();
       for (const [orderId, req] of Object.entries(currentStored)) {
-        if (req.status === "pending") {
-          try {
-            // Fetch all requests for this order
-            const res = await fetch(`/api/requests?orderId=${orderId}`);
-            if (res.ok) {
-              const reqs = await res.json();
-              const myReq = reqs.find((r: any) => r.id === req.id);
-              if (myReq && myReq.status === "approved") {
-                markRequestApproved(orderId);
-                setStatusMap((prev) => ({ ...prev, [orderId]: "approved" }));
-              }
-            }
-          } catch {}
-        }
+        if (req.status !== "pending") continue;
+        try {
+          const res = await fetch(`/api/requests?orderId=${orderId}`, { cache: "no-store" });
+          if (!res.ok) continue;
+          const reqs: JoinRequest[] = await res.json();
+          const myReq = reqs.find((r) => r.id === req.id);
+          if (!myReq) continue;
+
+          if (myReq.status === "approved") {
+            markRequestApproved(orderId);
+            setStatusMap((prev) => ({ ...prev, [orderId]: { status: "approved", requestId: req.id } }));
+          } else if (myReq.status === "declined") {
+            markRequestDeclined(orderId);
+            setStatusMap((prev) => ({ ...prev, [orderId]: { status: "declined", requestId: req.id } }));
+          }
+        } catch {}
       }
     };
     const pollingId = setInterval(pollPending, 3000);
@@ -58,7 +62,10 @@ export function useMyRequests() {
         if (e.data?.type === "REQUEST_APPROVED") {
           const { orderId } = e.data as { type: string; orderId: string };
           markRequestApproved(orderId);
-          setStatusMap((prev) => ({ ...prev, [orderId]: "approved" }));
+          setStatusMap((prev) => {
+            const existing = prev[orderId];
+            return { ...prev, [orderId]: { status: "approved", requestId: existing?.requestId ?? "" } };
+          });
         }
       };
       return () => {
@@ -80,7 +87,6 @@ export function useMyRequests() {
         note,
       };
 
-      // Try Supabase; fall back to a local record for demo mode
       let saved: JoinRequest | null = await createJoinRequest(payload);
       if (!saved) {
         saved = {
@@ -101,22 +107,36 @@ export function useMyRequests() {
       };
       saveMyRequest(local);
 
-      // Broadcast to the poster's tab (demo mode)
+      // Broadcast to the poster's tab (same-session sync)
       if (typeof BroadcastChannel !== "undefined") {
         const bc = new BroadcastChannel(BC_CHANNEL);
         bc.postMessage({ type: "JOIN_REQUEST", request: saved });
         bc.close();
       }
 
-      setStatusMap((prev) => ({ ...prev, [order.id]: "pending" }));
+      setStatusMap((prev) => ({ ...prev, [order.id]: { status: "pending", requestId: saved!.id } }));
+      return saved;
     },
     []
   );
 
+  const withdrawRequest = useCallback(async (orderId: string) => {
+    const entry = statusMap[orderId];
+    if (!entry || entry.status !== "pending") return;
+
+    await withdrawJoinRequest(entry.requestId);
+    removeMyRequest(orderId);
+    setStatusMap((prev) => {
+      const next = { ...prev };
+      delete next[orderId];
+      return next;
+    });
+  }, [statusMap]);
+
   const getStatus = useCallback(
-    (orderId: string): RequestStatus => statusMap[orderId] ?? "none",
+    (orderId: string): RequestStatus => statusMap[orderId]?.status ?? "none",
     [statusMap]
   );
 
-  return { getStatus, sendRequest };
+  return { getStatus, sendRequest, withdrawRequest };
 }

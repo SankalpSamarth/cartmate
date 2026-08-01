@@ -4,7 +4,7 @@ const MY_REQUESTS_KEY = "cartmate_my_requests";
 export interface LocalRequest {
   id: string;
   order_id: string;
-  status: "pending" | "approved";
+  status: "pending" | "approved" | "declined" | "withdrawn";
   requester_name: string | null;
   note: string;
 }
@@ -42,11 +42,27 @@ export function saveMyRequest(req: LocalRequest): void {
   save(map);
 }
 
+/** Remove a request entirely from localStorage (used after withdraw). */
+export function removeMyRequest(orderId: string): void {
+  const map = load();
+  delete map[orderId];
+  save(map);
+}
+
 /** Mark a request as approved (called when approval BC message arrives). */
 export function markRequestApproved(orderId: string): void {
   const map = load();
   if (map[orderId]) {
     map[orderId] = { ...map[orderId], status: "approved" };
+    save(map);
+  }
+}
+
+/** Mark a request as declined (called when order fills up). */
+export function markRequestDeclined(orderId: string): void {
+  const map = load();
+  if (map[orderId]) {
+    map[orderId] = { ...map[orderId], status: "declined" };
     save(map);
   }
 }

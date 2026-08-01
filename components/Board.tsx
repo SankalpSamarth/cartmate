@@ -19,7 +19,7 @@ import type { StoredPost } from "@/lib/device";
 export function Board() {
   const { orders, loading, realtimeConnected, removeOrder, addOrder } = useOrders();
   const { myPost, persist, cancel } = useMyPost();
-  const { getStatus, sendRequest } = useMyRequests();
+  const { getStatus, sendRequest, withdrawRequest } = useMyRequests();
   const { requests, approve, pendingCount } = useIncomingRequests(myPost?.id ?? null);
 
   const [selectedHostel, setSelectedHostel] = useState("All");
@@ -101,6 +101,7 @@ export function Board() {
               requestStatus={getStatus(order.id)}
               onDelete={removeOrder}
               onRequestJoin={setRequestTarget}
+              onWithdraw={withdrawRequest}
             />
           ))
         )}
@@ -144,6 +145,7 @@ export function Board() {
       <RequestsSheet
         isOpen={requestsSheetOpen}
         requests={requests}
+        order={myPost ? orders.find((o) => o.id === myPost.id) ?? null : null}
         onClose={() => setRequestsSheetOpen(false)}
         onApprove={approve}
       />

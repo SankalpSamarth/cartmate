@@ -8,12 +8,15 @@ export interface Order {
   device_id: string;
   created_at: string;
   expires_at: string;
+  max_spots: 1 | 2;
 }
 
 export interface MyPostRecord {
   id: string;
   device_id: string;
   expires_at: string;
+  platform: string;
+  hostel: string;
 }
 
 export interface JoinRequest {
@@ -22,6 +25,6 @@ export interface JoinRequest {
   requester_device_id: string;
   requester_name: string | null;
   note: string;
-  status: "pending" | "approved";
+  status: "pending" | "approved" | "declined" | "withdrawn";
   created_at: string;
 }
