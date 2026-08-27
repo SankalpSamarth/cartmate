@@ -4,6 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "CartMate",
     short_name: "CartMate",
+    id: "/",
     description: "Split quick-commerce orders with your hostelmates. Save on delivery fees.",
     start_url: "/",
     display: "standalone",

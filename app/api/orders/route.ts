@@ -6,10 +6,12 @@ export const fetchCache = "force-no-store";
 
 import { getRedis } from "@/lib/redis";
 import type { Order } from "@/lib/types";
+import { sendPushToHostel } from "@/lib/push";
 
 // ── In-memory fallback (local dev without Upstash) ──────────────
-const globalAny = global as any;
-if (!globalAny._mockOrders) globalAny._mockOrders = [];
+type OrdersGlobal = typeof globalThis & { _mockOrders?: Order[] };
+const ordersGlobal = globalThis as OrdersGlobal;
+if (!ordersGlobal._mockOrders) ordersGlobal._mockOrders = [];
 
 // ── Redis helpers ────────────────────────────────────────────────
 const ORDERS_KEY = "cartmate:orders"; // sorted set: score = expiry ms
@@ -65,11 +67,11 @@ export async function GET() {
       return NextResponse.json(orders);
     } catch (err) {
       console.error("[CartMate] Redis GET /api/orders failed:", err);
-      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
   }
   // In-memory fallback
-  const active = (globalAny._mockOrders as Order[])
+  const active = ordersGlobal._mockOrders!
     .filter((o) => new Date(o.expires_at) > new Date())
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   return NextResponse.json(active);
@@ -107,14 +109,28 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "You already have an active post" }, { status: 429 });
       }
       await redisCreateOrder(redis, order);
-      return NextResponse.json(order);
     } catch (err) {
       console.error("[CartMate] Redis POST /api/orders failed:", err);
-      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
   } else {
-    (globalAny._mockOrders as Order[]).unshift(order);
+    ordersGlobal._mockOrders!.unshift(order);
   }
+
+  const minutesLeft = Math.max(
+    1,
+    Math.round((new Date(order.expires_at).getTime() - Date.now()) / 60000)
+  );
+  await sendPushToHostel(
+    order.hostel,
+    {
+      title: `${order.platform} order in your hostel`,
+      body: `${order.poster_name} is ordering now · closes in ${minutesLeft} min`,
+      url: `/?hostel=${encodeURIComponent(order.hostel)}`,
+      tag: `order-${order.id}`,
+    },
+    order.device_id
+  );
 
   return NextResponse.json(order);
 }
@@ -136,12 +152,12 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ success: true });
     } catch (err) {
       console.error("[CartMate] Redis DELETE /api/orders failed:", err);
-      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
   }
 
   // In-memory fallback
-  globalAny._mockOrders = (globalAny._mockOrders as Order[]).filter(
+  ordersGlobal._mockOrders = ordersGlobal._mockOrders!.filter(
     (o) => !(o.id === id && o.device_id === deviceId)
   );
   return NextResponse.json({ success: true });

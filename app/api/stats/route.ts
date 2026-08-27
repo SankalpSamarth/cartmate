@@ -25,8 +25,10 @@ export async function GET() {
   }
 
   // Fallback: count from in-memory mock orders
-  const globalAny = global as any;
-  const orders = (globalAny._mockOrders ?? []) as { created_at: string }[];
+  const statsGlobal = globalThis as typeof globalThis & {
+    _mockOrders?: { created_at: string }[];
+  };
+  const orders = statsGlobal._mockOrders ?? [];
   const now = Date.now();
   const oneHourAgo = now - 60 * 60 * 1000;
   const oneDayAgo = now - 24 * 60 * 60 * 1000;

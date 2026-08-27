@@ -5,9 +5,14 @@ export const fetchCache = "force-no-store";
 
 import { getRedis } from "@/lib/redis";
 import type { JoinRequest, Order } from "@/lib/types";
+import { sendPushToDevice } from "@/lib/push";
 
-const globalAny = global as any;
-if (!globalAny._mockRequests) globalAny._mockRequests = [];
+type RequestsGlobal = typeof globalThis & {
+  _mockRequests?: JoinRequest[];
+  _mockOrders?: Order[];
+};
+const requestsGlobal = globalThis as RequestsGlobal;
+if (!requestsGlobal._mockRequests) requestsGlobal._mockRequests = [];
 
 const REQUEST_KEY = (id: string) => `cartmate:request:${id}`;
 const ORDER_REQUESTS_KEY = (orderId: string) => `cartmate:requests:order:${orderId}`;
@@ -36,12 +41,12 @@ export async function GET(req: Request) {
       return NextResponse.json(requests);
     } catch (err) {
       console.error("[CartMate] Redis GET /api/requests failed:", err);
-      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
   }
 
   // In-memory fallback
-  const requests = (globalAny._mockRequests as JoinRequest[]).filter(
+  const requests = requestsGlobal._mockRequests!.filter(
     (r) => r.order_id === orderId
   );
   return NextResponse.json(requests);
@@ -107,10 +112,25 @@ export async function POST(req: Request) {
       await redis.sadd(DEVICE_PENDING_KEY, data.order_id);
       await redis.expire(DEVICE_PENDING_KEY, 60 * 60 * 24);
 
+      const orderRaw = await redis.get<Order | string>(ORDER_KEY(data.order_id));
+      const order: Order | null = orderRaw
+        ? typeof orderRaw === "string"
+          ? JSON.parse(orderRaw)
+          : orderRaw
+        : null;
+      if (order) {
+        await sendPushToDevice(order.device_id, {
+          title: "New join request",
+          body: `${newRequest.requester_name || "Someone nearby"} wants to join your ${order.platform} order`,
+          url: `/?hostel=${encodeURIComponent(order.hostel)}`,
+          tag: `request-${newRequest.id}`,
+        });
+      }
+
       return NextResponse.json(newRequest);
     } catch (err) {
       console.error("[CartMate] Redis POST /api/requests failed:", err);
-      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
   } else {
     const newRequest: JoinRequest = {
@@ -119,7 +139,16 @@ export async function POST(req: Request) {
       created_at: new Date().toISOString(),
       status: "pending",
     };
-    (globalAny._mockRequests as JoinRequest[]).push(newRequest);
+    requestsGlobal._mockRequests!.push(newRequest);
+    const order = requestsGlobal._mockOrders?.find((item) => item.id === data.order_id);
+    if (order) {
+      await sendPushToDevice(order.device_id, {
+        title: "New join request",
+        body: `${newRequest.requester_name || "Someone nearby"} wants to join your ${order.platform} order`,
+        url: `/?hostel=${encodeURIComponent(order.hostel)}`,
+        tag: `request-${newRequest.id}`,
+      });
+    }
     return NextResponse.json(newRequest);
   }
 }
@@ -155,7 +184,7 @@ export async function PATCH(req: Request) {
       await redis.srem(DEVICE_PENDING_KEY, existing.order_id);
 
       // ── Auto-decline if spots full ───────────────────────
-      const orderRaw = await redis.get<string>(ORDER_KEY(existing.order_id));
+      const orderRaw = await redis.get<Order | string>(ORDER_KEY(existing.order_id));
       if (orderRaw) {
         const order: Order = typeof orderRaw === "string" ? JSON.parse(orderRaw) : orderRaw;
         const allRequests = await getRequestsForOrder(redis, existing.order_id);
@@ -170,21 +199,45 @@ export async function PATCH(req: Request) {
             // Also free up the device's pending slot
             const devKey = `cartmate:device:pending:${req.requester_device_id}`;
             await redis.srem(devKey, req.order_id);
+            await sendPushToDevice(req.requester_device_id, {
+              title: "This order filled up",
+              body: `The ${order.platform} order in ${order.hostel} is full.`,
+              url: `/?hostel=${encodeURIComponent(order.hostel)}`,
+              tag: `request-${req.id}`,
+            });
           }
         }
+
+        await sendPushToDevice(existing.requester_device_id, {
+          title: "You're in",
+          body: `${order.poster_name} approved your ${order.platform} request. Open CartMate to connect.`,
+          url: `/?hostel=${encodeURIComponent(order.hostel)}`,
+          tag: `request-${existing.id}`,
+        });
       }
 
       return NextResponse.json(updated);
     } catch (err) {
       console.error("[CartMate] Redis PATCH /api/requests failed:", err);
-      return NextResponse.json({ error: String((err as any).message || err) }, { status: 500 });
+      return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
   }
 
   // In-memory fallback
-  const req_ = (globalAny._mockRequests as JoinRequest[]).find((r) => r.id === id);
+  const req_ = requestsGlobal._mockRequests!.find((r) => r.id === id);
   if (req_) {
     req_.status = action === "withdraw" ? "withdrawn" : "approved";
+    if (action === "approve") {
+      const order = requestsGlobal._mockOrders?.find((item) => item.id === req_.order_id);
+      if (order) {
+        await sendPushToDevice(req_.requester_device_id, {
+          title: "You're in",
+          body: `${order.poster_name} approved your ${order.platform} request. Open CartMate to connect.`,
+          url: `/?hostel=${encodeURIComponent(order.hostel)}`,
+          tag: `request-${req_.id}`,
+        });
+      }
+    }
   }
   return NextResponse.json({ success: true });
 }

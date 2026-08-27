@@ -19,7 +19,7 @@ export function LiveCounter({ count, realtimeConnected }: LiveCounterProps) {
 
   const activeText =
     count === 0
-      ? "No one ordering right now"
+      ? "No active orders"
       : count === 1
       ? "1 person ordering right now"
       : `${count} people ordering right now`;
@@ -27,8 +27,7 @@ export function LiveCounter({ count, realtimeConnected }: LiveCounterProps) {
   return (
     <div className="live-counter-wrap">
       <div className="live-counter">
-        {/* Green pulse dot — a status signal, not a badge */}
-        <span className={`pulse-dot ${realtimeConnected ? "pulse-dot--live" : "pulse-dot--offline"}`} />
+        <span className={`pulse-dot ${count > 0 && realtimeConnected ? "pulse-dot--live" : "pulse-dot--idle"}`} />
         <span className="live-counter__text">{activeText}</span>
       </div>
       {stats && stats.lastHour > 0 && (

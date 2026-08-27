@@ -10,6 +10,14 @@ interface FilterTabsProps {
 export function FilterTabs({ selected, onChange }: FilterTabsProps) {
   const tabs = ["All", ...HOSTELS];
 
+  const labelFor = (tab: string) => {
+    if (tab === "All") return "All hostels";
+    return tab
+      .replace(/^HB4\s+/i, "")
+      .replace(/-WING/i, "-Wing")
+      .replace(/\s*\(([^)]+)\)$/, " · $1");
+  };
+
   return (
     <div className="filter-tabs-wrapper">
       <div className="filter-tabs">
@@ -18,8 +26,9 @@ export function FilterTabs({ selected, onChange }: FilterTabsProps) {
             key={tab}
             onClick={() => onChange(tab)}
             className={`filter-tab ${selected === tab ? "filter-tab--active" : ""}`}
+            aria-pressed={selected === tab}
           >
-            {tab}
+            {labelFor(tab)}
           </button>
         ))}
       </div>

@@ -1,4 +1,4 @@
-const fs = require('fs');
+import fs from "node:fs";
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
   <rect width="512" height="512" fill="#0a0a0a" rx="112" />
   <!-- A sleek minimal cart / bag icon or typography -->

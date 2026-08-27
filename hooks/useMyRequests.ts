@@ -16,21 +16,23 @@ import type { Order, JoinRequest } from "@/lib/types";
 const BC_CHANNEL = "cartmate-requests";
 
 type RequestStatus = "none" | "pending" | "approved" | "declined" | "withdrawn";
+type StatusMap = Record<string, { status: RequestStatus; requestId: string }>;
+
+function getInitialStatusMap(): StatusMap {
+  const stored = getAllRequests();
+  const initial: StatusMap = {};
+  for (const [orderId, request] of Object.entries(stored)) {
+    initial[orderId] = { status: request.status, requestId: request.id };
+  }
+  return initial;
+}
 
 /** Tracks the current device's outgoing join requests. */
 export function useMyRequests() {
   // Map of orderId → { status, requestId }
-  const [statusMap, setStatusMap] = useState<Record<string, { status: RequestStatus; requestId: string }>>({});
+  const [statusMap, setStatusMap] = useState<StatusMap>(getInitialStatusMap);
 
   useEffect(() => {
-    // Hydrate from localStorage
-    const stored = getAllRequests();
-    const initial: Record<string, { status: RequestStatus; requestId: string }> = {};
-    for (const [orderId, req] of Object.entries(stored)) {
-      initial[orderId] = { status: req.status, requestId: req.id };
-    }
-    setStatusMap(initial);
-
     // Polling — check if pending requests have been approved or declined
     const pollPending = async () => {
       const currentStored = getAllRequests();
@@ -88,15 +90,8 @@ export function useMyRequests() {
         note,
       };
 
-      let saved: JoinRequest | null = await createJoinRequest(payload);
-      if (!saved) {
-        saved = {
-          id: crypto.randomUUID(),
-          status: "pending",
-          created_at: new Date().toISOString(),
-          ...payload,
-        };
-      }
+      const saved: JoinRequest | null = await createJoinRequest(payload);
+      if (!saved) return null;
 
       // Persist locally
       const local: LocalRequest = {
@@ -115,7 +110,7 @@ export function useMyRequests() {
         bc.close();
       }
 
-      setStatusMap((prev) => ({ ...prev, [order.id]: { status: "pending", requestId: saved!.id } }));
+      setStatusMap((prev) => ({ ...prev, [order.id]: { status: "pending", requestId: saved.id } }));
       return saved;
     },
     []

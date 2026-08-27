@@ -4,13 +4,12 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import type { Order } from "@/lib/types";
 
 interface SendRequestModalProps {
-  order: Order | null;
+  order: Order;
   onClose: () => void;
-  onSend: (order: Order, name: string | null, note: string) => void;
+  onSend: (order: Order, name: string | null, note: string) => Promise<boolean>;
 }
 
 export function SendRequestModal({ order, onClose, onSend }: SendRequestModalProps) {
-  const isOpen = order !== null;
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [noteError, setNoteError] = useState("");
@@ -18,13 +17,9 @@ export function SendRequestModal({ order, onClose, onSend }: SendRequestModalPro
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isOpen) { setName(""); setNote(""); setNoteError(""); }
-  }, [isOpen]);
-
-  useEffect(() => {
-    document.body.style.overflow = isOpen ? "hidden" : "";
+    document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = ""; };
-  }, [isOpen]);
+  }, []);
 
   const handleOverlayClick = useCallback(
     (e: React.MouseEvent) => { if (e.target === overlayRef.current) onClose(); },
@@ -32,34 +27,35 @@ export function SendRequestModal({ order, onClose, onSend }: SendRequestModalPro
   );
 
   const handleSend = async () => {
-    if (!order) return;
     if (!note.trim()) { setNoteError("Tell them what you want to order"); return; }
     if (note.length > 150) { setNoteError("Keep it under 150 characters"); return; }
     setSending(true);
-    await onSend(order, name.trim() || null, note.trim());
+    const sent = await onSend(order, name.trim() || null, note.trim());
     setSending(false);
+    if (!sent) {
+      setNoteError("Couldn’t send the request. Check your connection and try again.");
+      return;
+    }
     onClose();
   };
 
   return (
     <div
       ref={overlayRef}
-      className={`modal-overlay ${isOpen ? "modal-overlay--open" : ""}`}
+      className="modal-overlay modal-overlay--open"
       onClick={handleOverlayClick}
       aria-modal="true"
       role="dialog"
     >
-      <div className={`modal-sheet ${isOpen ? "modal-sheet--open" : ""}`}>
+      <div className="modal-sheet modal-sheet--open">
         <div className="modal-handle" />
         <div className="modal-content">
           <div className="modal-header">
             <div>
               <h2 className="modal-title">Ask to join</h2>
-              {order && (
-                <p className="modal-subtitle">
-                  {order.platform} · {order.hostel}
-                </p>
-              )}
+              <p className="modal-subtitle">
+                {order.platform} · {order.hostel}
+              </p>
             </div>
             <button onClick={onClose} className="modal-close" aria-label="Close">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

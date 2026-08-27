@@ -1,15 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { getMyPost, saveMyPost, clearMyPost, StoredPost } from "@/lib/device";
 import { deleteOrder } from "@/lib/api";
 
 export function useMyPost() {
-  const [myPost, setMyPost] = useState<StoredPost | null>(null);
-
-  useEffect(() => {
-    setMyPost(getMyPost());
-  }, []);
+  const [myPost, setMyPost] = useState<StoredPost | null>(getMyPost);
 
   const persist = useCallback((post: StoredPost) => {
     saveMyPost(post);

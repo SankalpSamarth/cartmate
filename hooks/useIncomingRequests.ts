@@ -23,7 +23,7 @@ export function useIncomingRequests(orderId: string | null) {
   }, [orderId]);
 
   useEffect(() => {
-    if (!orderId) { setRequests([]); return; }
+    if (!orderId) return;
 
     const poll = () => loadRequests();
 
@@ -82,7 +82,10 @@ export function useIncomingRequests(orderId: string | null) {
     }
   }, []);
 
-  const pendingCount = requests.filter((r) => r.status === "pending").length;
+  const visibleRequests = orderId
+    ? requests.filter((request) => request.order_id === orderId)
+    : [];
+  const pendingCount = visibleRequests.filter((r) => r.status === "pending").length;
 
-  return { requests, approve, pendingCount };
+  return { requests: visibleRequests, approve, pendingCount };
 }

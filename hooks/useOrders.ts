@@ -27,7 +27,7 @@ export function useOrders() {
 
   useEffect(() => {
     // Initial fetch
-    loadOrders();
+    const initialLoadId = setTimeout(loadOrders, 0);
 
     // BroadcastChannel — instant sync within same browser session
     if (typeof BroadcastChannel !== "undefined") {
@@ -55,6 +55,7 @@ export function useOrders() {
 
     return () => {
       bcRef.current?.close();
+      clearTimeout(initialLoadId);
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [loadOrders]);
