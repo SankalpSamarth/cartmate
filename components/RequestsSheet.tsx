@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import type { JoinRequest, Order } from "@/lib/types";
 
 interface RequestsSheetProps {
@@ -8,11 +8,13 @@ interface RequestsSheetProps {
   requests: JoinRequest[];
   order: Order | null;
   onClose: () => void;
-  onApprove: (request: JoinRequest) => void;
+  onApprove: (request: JoinRequest) => Promise<boolean>;
 }
 
 export function RequestsSheet({ isOpen, requests, order, onClose, onApprove }: RequestsSheetProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [approvalError, setApprovalError] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
@@ -23,6 +25,18 @@ export function RequestsSheet({ isOpen, requests, order, onClose, onApprove }: R
     (e: React.MouseEvent) => { if (e.target === overlayRef.current) onClose(); },
     [onClose]
   );
+
+  const handleApprove = useCallback(async (request: JoinRequest) => {
+    if (approvingId) return;
+    setApprovalError(false);
+    setApprovingId(request.id);
+    try {
+      const approved = await onApprove(request);
+      if (!approved) setApprovalError(true);
+    } finally {
+      setApprovingId(null);
+    }
+  }, [approvingId, onApprove]);
 
   const pending = requests.filter((r) => r.status === "pending");
   const approved = requests.filter((r) => r.status === "approved");
@@ -66,6 +80,12 @@ export function RequestsSheet({ isOpen, requests, order, onClose, onApprove }: R
             </div>
           )}
 
+          {approvalError && (
+            <p className="form-error" role="alert">
+              Couldn&apos;t approve this request. Check your connection and try again.
+            </p>
+          )}
+
           {requests.length === 0 ? (
             <div className="requests-empty">
               <svg className="requests-empty__icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">
@@ -80,7 +100,7 @@ export function RequestsSheet({ isOpen, requests, order, onClose, onApprove }: R
                 <>
                   <p className="requests-section-label">Approved</p>
                   {approved.map((req) => (
-                    <RequestRow key={req.id} req={req} onApprove={onApprove} canApprove={false} />
+                    <RequestRow key={req.id} req={req} onApprove={handleApprove} canApprove={false} approving={false} />
                   ))}
                 </>
               )}
@@ -88,7 +108,7 @@ export function RequestsSheet({ isOpen, requests, order, onClose, onApprove }: R
                 <>
                   <p className="requests-section-label">Pending</p>
                   {pending.map((req) => (
-                    <RequestRow key={req.id} req={req} onApprove={onApprove} canApprove={!isFull} />
+                    <RequestRow key={req.id} req={req} onApprove={handleApprove} canApprove={!isFull} approving={approvingId === req.id} />
                   ))}
                 </>
               )}
@@ -96,7 +116,7 @@ export function RequestsSheet({ isOpen, requests, order, onClose, onApprove }: R
                 <>
                   <p className="requests-section-label requests-section-label--muted">Not selected</p>
                   {declined.map((req) => (
-                    <RequestRow key={req.id} req={req} onApprove={onApprove} canApprove={false} />
+                    <RequestRow key={req.id} req={req} onApprove={handleApprove} canApprove={false} approving={false} />
                   ))}
                 </>
               )}
@@ -118,10 +138,12 @@ function RequestRow({
   req,
   onApprove,
   canApprove,
+  approving,
 }: {
   req: JoinRequest;
-  onApprove: (r: JoinRequest) => void;
+  onApprove: (r: JoinRequest) => Promise<void>;
   canApprove: boolean;
+  approving: boolean;
 }) {
   const isApproved = req.status === "approved";
   const isDeclined = req.status === "declined";
@@ -142,8 +164,9 @@ function RequestRow({
         <button
           onClick={() => onApprove(req)}
           className="btn btn--approve"
+          disabled={approving}
         >
-          Approve
+          {approving ? "Approving…" : "Approve"}
         </button>
       ) : (
         <span className="request-row__pending-badge">Pending</span>

@@ -85,8 +85,9 @@ export function Board() {
   };
 
   const handleApprove = async (request: Parameters<typeof approve>[0]) => {
-    await approve(request);
-    trackEvent("request_approved");
+    const approved = await approve(request);
+    if (approved) trackEvent("request_approved");
+    return approved;
   };
 
   return (

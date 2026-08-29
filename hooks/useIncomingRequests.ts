@@ -59,12 +59,11 @@ export function useIncomingRequests(orderId: string | null) {
     }
   }, [orderId, loadRequests]);
 
-  /** Approve a join request — updates Supabase and broadcasts to requester's tab. */
+  /** Approve a join request, then tell the requester to reveal WhatsApp. */
   const approve = useCallback(async (request: JoinRequest) => {
-    // Update Supabase if available
-    await approveJoinRequest(request.id);
+    const saved = await approveJoinRequest(request.id);
+    if (!saved) return false;
 
-    // Update local state optimistically
     setRequests((prev) =>
       prev.map((r) => (r.id === request.id ? { ...r, status: "approved" } : r))
     );
@@ -80,6 +79,7 @@ export function useIncomingRequests(orderId: string | null) {
       });
       bc.close();
     }
+    return true;
   }, []);
 
   const visibleRequests = orderId

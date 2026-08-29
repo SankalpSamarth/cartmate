@@ -14,6 +14,7 @@ import { getDeviceId } from "@/lib/device";
 import type { Order, JoinRequest } from "@/lib/types";
 
 const BC_CHANNEL = "cartmate-requests";
+const POLLING_INTERVAL_MS = 3_000;
 
 type RequestStatus = "none" | "pending" | "approved" | "declined" | "withdrawn";
 type StatusMap = Record<string, { status: RequestStatus; requestId: string }>;
@@ -37,14 +38,14 @@ export function useMyRequests() {
     const pollPending = async () => {
       const currentStored = getAllRequests();
       if (document.visibilityState !== "visible") return;
-      for (const [orderId, req] of Object.entries(currentStored)) {
-        if (req.status !== "pending") continue;
+      await Promise.all(Object.entries(currentStored).map(async ([orderId, req]) => {
+        if (req.status !== "pending") return;
         try {
-          const res = await fetch(`/api/requests?orderId=${orderId}`, { cache: "no-store" });
-          if (!res.ok) continue;
+          const res = await fetch(`/api/requests?orderId=${encodeURIComponent(orderId)}`, { cache: "no-store" });
+          if (!res.ok) return;
           const reqs: JoinRequest[] = await res.json();
           const myReq = reqs.find((r) => r.id === req.id);
-          if (!myReq) continue;
+          if (!myReq) return;
 
           if (myReq.status === "approved") {
             markRequestApproved(orderId);
@@ -54,9 +55,19 @@ export function useMyRequests() {
             setStatusMap((prev) => ({ ...prev, [orderId]: { status: "declined", requestId: req.id } }));
           }
         } catch {}
-      }
+      }));
     };
-    const pollingId = setInterval(pollPending, 15_000);
+
+    // Sync immediately on page load, then keep the visible tab fresh. This is
+    // important when a push notification opens or focuses CartMate.
+    void pollPending();
+    const pollingId = setInterval(() => void pollPending(), POLLING_INTERVAL_MS);
+    const syncWhenVisible = () => {
+      if (document.visibilityState === "visible") void pollPending();
+    };
+    window.addEventListener("focus", syncWhenVisible);
+    window.addEventListener("pageshow", syncWhenVisible);
+    document.addEventListener("visibilitychange", syncWhenVisible);
 
     // Listen for approval notifications from the poster's tab
     if (typeof BroadcastChannel !== "undefined") {
@@ -74,9 +85,17 @@ export function useMyRequests() {
       return () => {
         bc.close();
         clearInterval(pollingId);
+        window.removeEventListener("focus", syncWhenVisible);
+        window.removeEventListener("pageshow", syncWhenVisible);
+        document.removeEventListener("visibilitychange", syncWhenVisible);
       };
     }
-    return () => clearInterval(pollingId);
+    return () => {
+      clearInterval(pollingId);
+      window.removeEventListener("focus", syncWhenVisible);
+      window.removeEventListener("pageshow", syncWhenVisible);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+    };
   }, []);
 
   const sendRequest = useCallback(
